@@ -1,0 +1,15 @@
+{
+  "name": "aadhyaa-skills-platform",
+  "version": "1.0.0",
+  "description": "Full-Stack Web Platform for Aadhyaa Skills Research & Development (Robotics Kits, Projects, and Component Lab)",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "seed:backend": "npm --prefix backend run seed"
+  },
+  "keywords": ["robotics", "arduino", "iot", "stem", "education", "aadhyaa-skills"],
+  "author": "Aadhyaa Skills R&D",
+  "license": "ISC"
+}
+

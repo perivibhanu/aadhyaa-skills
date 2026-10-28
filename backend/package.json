@@ -1,0 +1,23 @@
+{
+  "name": "aadhyaa-skills-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Aadhyaa Skills Research & Development Kit & Project Platform",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js"
+  },
+  "keywords": ["robotics", "arduino", "iot", "stem", "kits"],
+  "author": "Aadhyaa Skills R&D",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
+  }
+}
+
