@@ -13,3 +13,4 @@ jobs:
       - name: Ping Render Health Check
         run: |
           curl -s -o /dev/null -w "%{http_code}" https://aadhyaa-skills-backend.onrender.com/api/health || echo "Ping completed"
+
