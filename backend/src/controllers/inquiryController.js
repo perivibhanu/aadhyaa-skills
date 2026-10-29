@@ -1,61 +1,8 @@
 import { Inquiry } from '../models/Inquiry.js';
 import { getDBStatus } from '../config/db.js';
 
-// In-memory store fallback with initial seed data
-const inMemoryInquiries = [
-  {
-    id: 'inq-101',
-    _id: 'inq-101',
-    fullName: 'Karthik Subramanian',
-    email: 'karthik.s@gmail.com',
-    phone: '+91 98402 11452',
-    institution: 'PSG College of Technology, Coimbatore',
-    inquiryType: 'Kit Purchase',
-    selectedItem: 'Robotic ARM',
-    message: 'We are participating in the National Robotics Championship and need 2 Robotic ARM kits along with the C++ code and servo calibration manual.',
-    status: 'New',
-    createdAt: new Date(Date.now() - 3600000 * 2),
-  },
-  {
-    id: 'inq-102',
-    _id: 'inq-102',
-    fullName: 'Dr. Anand Kumar (HOD ECE)',
-    email: 'anand.ece@veltech.edu.in',
-    phone: '+91 94431 88290',
-    institution: 'Vel Tech Rangarajan Dr. Sagunthala R&D Institute',
-    inquiryType: 'Custom Workshop',
-    selectedItem: 'Institutional Lab Setup',
-    message: 'Proposal discussion for setting up an official National Instruments Center of Excellence Lab with LabVIEW and myRIO hardware for 60 students.',
-    status: 'Contacted',
-    createdAt: new Date(Date.now() - 3600000 * 18),
-  },
-  {
-    id: 'inq-103',
-    _id: 'inq-103',
-    fullName: 'Priya Dharshini',
-    email: 'priyadharshini.r@yahoo.com',
-    phone: '+91 91763 44521',
-    institution: 'College of Engineering, Guindy (Anna University)',
-    inquiryType: 'Internship & Training',
-    selectedItem: 'CLAD Certification Track',
-    message: 'Interested in the CLAD global certification preparation program and 100% placement assurance in core automotive/automation sectors.',
-    status: 'In Review',
-    createdAt: new Date(Date.now() - 3600000 * 30),
-  },
-  {
-    id: 'inq-104',
-    _id: 'inq-104',
-    fullName: 'Venkatesh Rao',
-    email: 'venkat.combat@outlook.com',
-    phone: '+91 98840 92314',
-    institution: 'SRM Institute of Science and Technology',
-    inquiryType: 'Kit Purchase',
-    selectedItem: 'Fighting Robot',
-    message: 'Need the heavy-duty combat fighting robot kit with high RPM weapon motor and hardened steel chassis.',
-    status: 'Closed',
-    createdAt: new Date(Date.now() - 3600000 * 48),
-  },
-];
+// In-memory store fallback for new inquiries
+const inMemoryInquiries = [];
 
 export const createInquiry = async (req, res) => {
   try {

@@ -126,65 +126,8 @@ const initialStudents = [
   },
 ];
 
-// Initial Orders Data (Hardware Kits ordered by colleges / students)
-const initialOrders = [
-  {
-    id: 'ORD-901',
-    customerName: 'Karthik Subramanian',
-    email: 'karthik.s@gmail.com',
-    phone: '+91 98402 11452',
-    institution: 'PSG College of Technology, Coimbatore',
-    robotKit: 'Robotic ARM',
-    packageType: 'Pro Kit (6-DOF + Servos + Arduino)',
-    quantity: 2,
-    amount: 17998,
-    status: 'Confirmed',
-    date: '10/24/2026',
-    notes: 'Participating in National Robotics Championship. Urgently required for team trial.',
-  },
-  {
-    id: 'ORD-902',
-    customerName: 'Dr. Anand Kumar (HOD ECE)',
-    email: 'anand.ece@veltech.edu.in',
-    phone: '+91 94431 88290',
-    institution: 'Vel Tech Rangarajan Dr. Sagunthala R&D',
-    robotKit: 'Institutional Lab Bundle (5 Kits)',
-    packageType: 'All 5 Robot Kits (ARM, Soccer, Rover, Maze, Combat)',
-    quantity: 5,
-    amount: 54990,
-    status: 'In Production',
-    date: '10/22/2026',
-    notes: 'Official COE Lab procurement for 60-seat robotics batch.',
-  },
-  {
-    id: 'ORD-903',
-    customerName: 'Venkatesh Rao',
-    email: 'venkat.combat@outlook.com',
-    phone: '+91 98840 92314',
-    institution: 'SRM Institute of Science and Technology',
-    robotKit: 'Fighting Robot',
-    packageType: 'Combat Spinner Kit + 60A ESC & Radio',
-    quantity: 1,
-    amount: 11499,
-    status: 'Dispatched',
-    date: '10/18/2026',
-    notes: 'Waybill tracking shared via WhatsApp. Expected delivery in 48 hours.',
-  },
-  {
-    id: 'ORD-904',
-    customerName: 'Rahul Sharma',
-    email: 'rahul.s@iitm.ac.in',
-    phone: '+91 99620 44102',
-    institution: 'IIT Madras Center for Innovation',
-    robotKit: 'Maze Solvers',
-    packageType: 'Micromouse Autonomous Kit (Coreless Motors + IR Array)',
-    quantity: 2,
-    amount: 15998,
-    status: 'Delivered',
-    date: '10/12/2026',
-    notes: 'Delivered and verified. Student requested additional algorithms guide.',
-  },
-];
+// Initial Orders Data (Real orders are synced live from database and web desk)
+const initialOrders = [];
 
 // 5 Kits configuration
 const initialKitVideos = {
@@ -352,6 +295,15 @@ export default function AdminDashboard({ onNavigate }) {
     } catch (e) {}
   }, [kitVideos]);
 
+  // Helper: Get persistent set of permanently deleted keys
+  const getDeletedOrderKeys = () => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('aadhyaa_deleted_order_keys') || '[]'));
+    } catch (e) {
+      return new Set();
+    }
+  };
+
   // Load backend leads from Render / MongoDB
   const fetchBackendLeads = async () => {
     setIsRefreshingOrders(true);
@@ -364,7 +316,7 @@ export default function AdminDashboard({ onNavigate }) {
 
       const res = await fetch(backendBase);
       const data = await res.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         const kitAmounts = {
           'Robotic ARM': 8999,
           'Robotic ARM Kit': 8999,
@@ -380,25 +332,52 @@ export default function AdminDashboard({ onNavigate }) {
           'CLAD/CLD/CLA Internship Enrollment': 4500,
         };
 
-        const backendOrders = data.data.map((inq, idx) => ({
-          id: inq._id ? `ORD-${inq._id.toString().slice(-4).toUpperCase()}` : (inq.id || `ORD-${850 + idx}`),
-          customerName: inq.fullName,
-          email: inq.email,
-          phone: inq.phone,
-          institution: inq.institution || 'Individual Student / Institution',
-          robotKit: inq.selectedItem || 'Robotic ARM Kit',
-          packageType: inq.inquiryType || 'Kit Purchase',
-          quantity: 1,
-          amount: kitAmounts[inq.selectedItem] || 8999,
-          status: inq.status === 'New' ? 'Confirmed' : (inq.status || 'Confirmed'),
-          date: inq.createdAt ? new Date(inq.createdAt).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US'),
-          notes: inq.message || 'Direct inquiry from website.',
-        }));
+        const deletedSet = getDeletedOrderKeys();
+
+        const backendOrders = data.data
+          .filter((inq) => {
+            const rawId = inq._id ? inq._id.toString() : (inq.id ? inq.id.toString() : '');
+            const phoneKit = `${(inq.phone || '').trim()}_${inq.selectedItem || ''}`;
+            const customerKey = `${(inq.fullName || '').toLowerCase().trim()}_${(inq.phone || '').trim()}`;
+            const generatedId = `ORD-${rawId.slice(-4).toUpperCase()}`;
+            return (
+              !deletedSet.has(rawId) &&
+              !deletedSet.has(phoneKit) &&
+              !deletedSet.has(customerKey) &&
+              !deletedSet.has(generatedId)
+            );
+          })
+          .map((inq, idx) => {
+            const rawId = inq._id ? inq._id.toString() : (inq.id ? inq.id.toString() : `inq-${Date.now()}-${idx}`);
+            return {
+              id: `ORD-${rawId.slice(-4).toUpperCase()}`,
+              rawId: rawId,
+              customerName: inq.fullName,
+              email: inq.email,
+              phone: inq.phone,
+              institution: inq.institution || 'Individual Student / Institution',
+              robotKit: inq.selectedItem || 'Robotic ARM Kit',
+              packageType: inq.inquiryType || 'Kit Purchase',
+              quantity: 1,
+              amount: kitAmounts[inq.selectedItem] || 8999,
+              status: inq.status === 'New' ? 'Confirmed' : (inq.status || 'Confirmed'),
+              date: inq.createdAt ? new Date(inq.createdAt).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US'),
+              notes: inq.message || 'Direct inquiry from website.',
+            };
+          });
 
         setOrders((prev) => {
-          const existingKeys = new Set(prev.map((o) => `${o.phone}_${o.robotKit}`));
-          const newOnes = backendOrders.filter((o) => !existingKeys.has(`${o.phone}_${o.robotKit}`));
-          const merged = [...newOnes, ...prev];
+          // Keep only active non-deleted orders
+          const activePrev = prev.filter(
+            (o) =>
+              !deletedSet.has(o.id) &&
+              !deletedSet.has(o.rawId) &&
+              !deletedSet.has(`${(o.phone || '').trim()}_${o.robotKit}`) &&
+              !deletedSet.has(`${(o.customerName || '').toLowerCase().trim()}_${(o.phone || '').trim()}`)
+          );
+          const existingKeys = new Set(activePrev.map((o) => `${(o.phone || '').trim()}_${o.robotKit}`));
+          const newOnes = backendOrders.filter((o) => !existingKeys.has(`${(o.phone || '').trim()}_${o.robotKit}`));
+          const merged = [...newOnes, ...activePrev];
           try {
             localStorage.setItem('aadhyaa_orders_data', JSON.stringify(merged));
           } catch (e) {}
@@ -535,11 +514,48 @@ export default function AdminDashboard({ onNavigate }) {
     showToast(`Order #${id} marked as "${newStatus}"`);
   };
 
-  // Delete Order
-  const deleteOrder = (id) => {
-    if (window.confirm(`Delete order record #${id}?`)) {
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-      showToast(`Order #${id} deleted.`);
+  // Delete Order permanently (persists across reloads & blocks backend re-addition)
+  const deleteOrder = async (id) => {
+    const orderToDelete = orders.find((o) => o.id === id);
+    const confirmName = orderToDelete ? `${orderToDelete.customerName} (${orderToDelete.robotKit})` : `#${id}`;
+
+    if (window.confirm(`Permanently delete order for ${confirmName}?`)) {
+      // 1. Add keys to permanent deleted set in localStorage
+      try {
+        const currentDeleted = JSON.parse(localStorage.getItem('aadhyaa_deleted_order_keys') || '[]');
+        const toAdd = [
+          id,
+          orderToDelete?.rawId,
+          orderToDelete ? `${(orderToDelete.phone || '').trim()}_${orderToDelete.robotKit}` : null,
+          orderToDelete ? `${(orderToDelete.customerName || '').toLowerCase().trim()}_${(orderToDelete.phone || '').trim()}` : null,
+        ].filter(Boolean);
+        const updatedDeleted = Array.from(new Set([...currentDeleted, ...toAdd]));
+        localStorage.setItem('aadhyaa_deleted_order_keys', JSON.stringify(updatedDeleted));
+      } catch (e) {}
+
+      // 2. Remove from active state and update local storage immediately
+      setOrders((prev) => {
+        const filtered = prev.filter((o) => o.id !== id);
+        try {
+          localStorage.setItem('aadhyaa_orders_data', JSON.stringify(filtered));
+        } catch (e) {}
+        return filtered;
+      });
+
+      // 3. Call backend API to delete from MongoDB / Render
+      const targetId = orderToDelete?.rawId || id;
+      try {
+        const backendBase = import.meta.env.VITE_API_URL
+          ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/inquiries`
+          : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+              ? 'https://aadhyaa-skills.onrender.com/api/inquiries'
+              : '/api/inquiries');
+        await fetch(`${backendBase}/${targetId}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Backend delete inquiry notification:', err.message);
+      }
+
+      showToast(`Order permanently deleted.`);
     }
   };
 
