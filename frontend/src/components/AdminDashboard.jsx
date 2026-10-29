@@ -301,12 +301,17 @@ export default function AdminDashboard({ onNavigate }) {
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('aadhyaa_orders_data');
-      return saved ? JSON.parse(saved) : initialOrders;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return initialOrders;
     } catch (e) {
       return initialOrders;
     }
   });
   const [selectedOrderModal, setSelectedOrderModal] = useState(null);
+  const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
 
   // Kit Video Management State
   const [selectedKitSlug, setSelectedKitSlug] = useState('robotic-arm');
@@ -347,23 +352,72 @@ export default function AdminDashboard({ onNavigate }) {
     } catch (e) {}
   }, [kitVideos]);
 
-  // Load backend leads if available
-  useEffect(() => {
-    const fetchBackendLeads = async () => {
-      try {
-        const backendBase = import.meta.env.VITE_API_URL
-          ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/inquiries`
-          : 'http://127.0.0.1:5000/api/inquiries';
-        const res = await fetch(backendBase);
-        const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-          // Merge inquiries into orders or students if not present
-        }
-      } catch (err) {
-        // Safe offline fallback
+  // Load backend leads from Render / MongoDB
+  const fetchBackendLeads = async () => {
+    setIsRefreshingOrders(true);
+    try {
+      const backendBase = import.meta.env.VITE_API_URL
+        ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api/inquiries`
+        : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+            ? 'https://aadhyaa-skills.onrender.com/api/inquiries'
+            : '/api/inquiries');
+
+      const res = await fetch(backendBase);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const kitAmounts = {
+          'Robotic ARM': 8999,
+          'Robotic ARM Kit': 8999,
+          'Soccer Robot': 9499,
+          'Soccer Robot Kit': 9499,
+          'All Terrain Robot': 10499,
+          'All Terrain Robot Kit': 10499,
+          'Maze Solvers': 7999,
+          'Maze Solver Kit': 7999,
+          'Fighting Robot': 11499,
+          'Fighting Robot Kit': 11499,
+          'Custom / College Lab Package (20+ Kits)': 125000,
+          'CLAD/CLD/CLA Internship Enrollment': 4500,
+        };
+
+        const backendOrders = data.data.map((inq, idx) => ({
+          id: inq._id ? `ORD-${inq._id.toString().slice(-4).toUpperCase()}` : (inq.id || `ORD-${850 + idx}`),
+          customerName: inq.fullName,
+          email: inq.email,
+          phone: inq.phone,
+          institution: inq.institution || 'Individual Student / Institution',
+          robotKit: inq.selectedItem || 'Robotic ARM Kit',
+          packageType: inq.inquiryType || 'Kit Purchase',
+          quantity: 1,
+          amount: kitAmounts[inq.selectedItem] || 8999,
+          status: inq.status === 'New' ? 'Confirmed' : (inq.status || 'Confirmed'),
+          date: inq.createdAt ? new Date(inq.createdAt).toLocaleDateString('en-US') : new Date().toLocaleDateString('en-US'),
+          notes: inq.message || 'Direct inquiry from website.',
+        }));
+
+        setOrders((prev) => {
+          const existingKeys = new Set(prev.map((o) => `${o.phone}_${o.robotKit}`));
+          const newOnes = backendOrders.filter((o) => !existingKeys.has(`${o.phone}_${o.robotKit}`));
+          const merged = [...newOnes, ...prev];
+          try {
+            localStorage.setItem('aadhyaa_orders_data', JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
       }
-    };
-    if (isAuthenticated) fetchBackendLeads();
+    } catch (err) {
+      console.warn('Backend leads sync notice:', err.message);
+    } finally {
+      setIsRefreshingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchBackendLeads();
+      const timer = setInterval(fetchBackendLeads, 12000);
+      return () => clearInterval(timer);
+    }
   }, [isAuthenticated]);
 
   // Toast Helper
@@ -1157,25 +1211,52 @@ export default function AdminDashboard({ onNavigate }) {
                 </div>
               </div>
 
-              <button
-                onClick={() => downloadCSV('orders')}
-                style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '10px 20px',
-                  fontWeight: 700,
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
-                }}
-              >
-                <Download size={16} /> Download Sheets
-              </button>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  onClick={() => {
+                    fetchBackendLeads();
+                    showToast('Fetching latest orders from database...');
+                  }}
+                  style={{
+                    background: '#1e293b',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 18px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+                  }}
+                  title="Pull latest inquiries and orders from database"
+                >
+                  <RotateCcw size={15} style={{ animation: isRefreshingOrders ? 'spin 1s linear infinite' : 'none' }} />
+                  {isRefreshingOrders ? 'Syncing...' : 'Refresh Orders'}
+                </button>
+
+                <button
+                  onClick={() => downloadCSV('orders')}
+                  style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 20px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                  }}
+                >
+                  <Download size={16} /> Download Sheets
+                </button>
+              </div>
             </div>
 
             {/* Filter Chips & Search Bar */}

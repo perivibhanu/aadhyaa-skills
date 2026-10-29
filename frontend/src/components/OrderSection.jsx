@@ -33,7 +33,62 @@ export default function OrderSection({ onNavigate }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await submitInquiry(formData);
+
+    const kitAmounts = {
+      'Robotic ARM Kit': 8999,
+      'Soccer Robot Kit': 9499,
+      'All Terrain Robot Kit': 10499,
+      'Maze Solver Kit': 7999,
+      'Fighting Robot Kit': 11499,
+      'Custom / College Lab Package (20+ Kits)': 125000,
+      'CLAD/CLD/CLA Internship Enrollment': 4500,
+    };
+
+    const newOrderRecord = {
+      id: `ORD-${Date.now().toString().slice(-4)}`,
+      customerName: formData.fullName.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      institution: formData.institution ? formData.institution.trim() : 'Individual Student / Institution',
+      robotKit: formData.selectedItem || 'Robotic ARM Kit',
+      packageType: formData.inquiryType || 'Kit Purchase',
+      quantity: 1,
+      amount: kitAmounts[formData.selectedItem] || 8999,
+      status: 'Confirmed',
+      date: new Date().toLocaleDateString('en-US'),
+      notes: formData.message && formData.message.trim() ? formData.message.trim() : `Online order placed for ${formData.selectedItem || 'Robotics Kit'}.`,
+    };
+
+    // 1. Save directly into localStorage for instant admin dashboard reflection
+    try {
+      const existingRaw = localStorage.getItem('aadhyaa_orders_data');
+      let existingList = [];
+      if (existingRaw) {
+        try {
+          existingList = JSON.parse(existingRaw);
+        } catch (err) {}
+      }
+      const updated = [newOrderRecord, ...existingList.filter(o => o.phone !== newOrderRecord.phone || o.robotKit !== newOrderRecord.robotKit)];
+      localStorage.setItem('aadhyaa_orders_data', JSON.stringify(updated));
+    } catch (err) {
+      console.warn('[OrderSection] Local storage sync error:', err);
+    }
+
+    // 2. Transmit to Render / MongoDB backend
+    try {
+      await submitInquiry({
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        institution: formData.institution ? formData.institution.trim() : 'Individual Student / Institution',
+        inquiryType: formData.inquiryType || 'Kit Purchase',
+        selectedItem: formData.selectedItem || 'Robotic ARM Kit',
+        message: formData.message && formData.message.trim() ? formData.message.trim() : `Online order placed for ${formData.selectedItem || 'Robotics Kit'}.`,
+      });
+    } catch (err) {
+      console.warn('[OrderSection] Backend transmission error:', err);
+    }
+
     setLoading(false);
     setSubmitted(true);
   };

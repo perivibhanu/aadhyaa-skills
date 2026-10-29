@@ -12,7 +12,7 @@ const inquirySchema = new mongoose.Schema(
       default: 'Kit Purchase',
     },
     selectedItem: { type: String }, // e.g. "Robotics Kit", "Robotic ARM"
-    message: { type: String, required: true },
+    message: { type: String, default: 'Online order & quotation request' },
     status: {
       type: String,
       enum: ['New', 'In Review', 'Contacted', 'Closed'],

@@ -61,21 +61,21 @@ export const createInquiry = async (req, res) => {
   try {
     const { fullName, email, phone, institution, inquiryType, selectedItem, message } = req.body;
 
-    if (!fullName || !email || !phone || !message) {
+    if (!fullName || !email || !phone) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide full name, email, phone number, and message.',
+        message: 'Please provide full name, email address, and WhatsApp/phone number.',
       });
     }
 
     const payload = {
-      fullName,
-      email,
-      phone,
-      institution: institution || 'Individual Student / Hobbyist',
+      fullName: fullName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      institution: institution ? institution.trim() : 'Individual Student / Institution',
       inquiryType: inquiryType || 'Kit Purchase',
-      selectedItem: selectedItem || 'General Inquiry',
-      message,
+      selectedItem: selectedItem || 'Robotic ARM Kit',
+      message: (message && message.trim()) ? message.trim() : `Order request for ${selectedItem || 'Robotics Kit'} via web desk.`,
       status: 'New',
       createdAt: new Date(),
     };
